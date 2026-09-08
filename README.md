@@ -10,6 +10,24 @@ The project was developed with a focus on **UI/UX, backend reliability, authenti
 
 ---
 
+## Admin Access
+
+**Production:** https://recruitment-portal-deploy.vercel.app  
+**Admin Dashboard:** https://recruitment-portal-deploy.vercel.app/admin
+
+### Evaluation Account
+
+| Field | Details |
+|---|---|
+| Email | `sampletesting2007@gmail.com` |
+| Password | `Rushil123!` |
+
+This account has administrator access to the recruitment portal and can be used to evaluate the admin workflow, including applicant review, response viewing, search, filtering, analytics, CSV export, and shortlisting.
+
+> **Important:** The credentials above are for the recruitment portal account only and are **not** Gmail credentials.
+
+---
+
 ## Overview
 
 The GDG Club Recruitment Portal provides separate workflows for students and administrators.
