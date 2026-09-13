@@ -862,16 +862,8 @@ export function searchDepartments(query = "", category = "All") {
     const q = query.trim().toLowerCase();
     list = list.filter((dept) => {
       const matchName = dept.name.toLowerCase().includes(q);
-      const matchShortName = dept.shortName.toLowerCase().includes(q);
-      const matchTagline = dept.tagline.toLowerCase().includes(q);
-      const matchOverview = dept.overview.toLowerCase().includes(q);
-      const matchTags = dept.tags.some((tag) => tag.toLowerCase().includes(q));
-      const matchSkills = dept.skills.some((skill) => skill.toLowerCase().includes(q));
-      const matchWork = dept.workAreas.some(
-        (w) => w.title.toLowerCase().includes(q) || w.description.toLowerCase().includes(q)
-      );
-
-      return matchName || matchShortName || matchTagline || matchOverview || matchTags || matchSkills || matchWork;
+      const matchShortName = dept.shortName ? dept.shortName.toLowerCase().includes(q) : false;
+      return matchName || matchShortName;
     });
   }
 

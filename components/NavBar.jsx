@@ -28,8 +28,6 @@ const NavBar = () => {
 
   const navigationRouteList = [
     { label: "Home", href: "/" },
-    { label: "Explore", href: "/explore" },
-    { label: "Departments", href: "/departments" },
     ...(isAuthenticated
       ? [{ label: "My Applications", href: "/applications" }]
       : []),

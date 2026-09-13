@@ -153,7 +153,7 @@ function ExploreContent() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search skills, tools, or tracks..."
+                placeholder="Search departments..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 pr-8 h-9 text-xs sm:text-sm rounded-full bg-card border-border focus:ring-primary"

@@ -36,7 +36,7 @@ export default function DepartmentCard({
   return (
     <div
       onClick={() => onOpenDetails(department)}
-      className="group relative flex flex-col justify-between rounded-2xl border border-border bg-card p-4 transition-all duration-300 hover:border-border/90 hover:shadow-lg hover:-translate-y-1 cursor-pointer focus-within:ring-2 focus-within:ring-primary"
+      className="group relative flex flex-col justify-between rounded-2xl border border-border bg-card p-4 transition-all duration-300 hover:border-border/90 hover:shadow-lg hover:-translate-y-1 cursor-pointer focus-within:ring-2 focus-within:ring-primary h-full"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -47,7 +47,7 @@ export default function DepartmentCard({
       }}
       aria-label={`View details for ${department.name}`}
     >
-      <div className="space-y-3.5">
+      <div className="space-y-3.5 flex-1 flex flex-col">
         {/* Visual Banner */}
         <DepartmentVisual
           iconPath={department.iconPath}
@@ -58,7 +58,7 @@ export default function DepartmentCard({
 
         {/* Content Header */}
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center justify-between gap-2 flex-wrap min-h-[1.75rem]">
             <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
               {department.name}
             </h3>
@@ -69,13 +69,13 @@ export default function DepartmentCard({
             )}
           </div>
 
-          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed min-h-[2.5rem]">
             {department.tagline}
           </p>
         </div>
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-1.5 pt-1">
+        <div className="flex flex-wrap gap-1.5 pt-1 min-h-[1.75rem]">
           {department.tags.slice(0, 4).map((tag) => (
             <span
               key={tag}
@@ -93,7 +93,7 @@ export default function DepartmentCard({
       </div>
 
       {/* Action Buttons */}
-      <div className="mt-4 pt-3.5 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div className="mt-auto pt-3.5 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 w-full sm:w-auto">
           <Button
             type="button"
