@@ -29,11 +29,13 @@ const NavBar = () => {
   const navigationRouteList = [
     { label: "Home", href: "/" },
     ...(isAuthenticated
-      ? [{ label: "My Applications", href: "/applications" }]
-      : []),
-    ...(isAuthenticated && hasAdminPermissions
-      ? [{ label: "Admin Panel", href: "/admin" }]
-      : []),
+      ? [
+          { label: "My Applications", href: "/applications" },
+          ...(hasAdminPermissions
+            ? [{ label: "Admin Panel", href: "/admin" }]
+            : []),
+        ]
+      : [{ label: "Sign In", href: "/auth/signin" }]),
   ];
 
   return (
@@ -85,13 +87,9 @@ const NavBar = () => {
           <ThemeToggle />
           {isPending ? (
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          ) : !isAuthenticated ? (
-            <Button size="sm" asChild>
-              <Link href="/auth/signin">Sign In</Link>
-            </Button>
-          ) : (
+          ) : isAuthenticated ? (
             <UserButton user={session?.user} />
-          )}
+          ) : null}
         </div>
       </nav>
     </header>
