@@ -1,27 +1,73 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
 import { reviews } from "@/constants";
 import { getDepartmentDisplayName, getDepartmentDescription } from "@/lib/departments";
+import { getDepartmentExploreData } from "@/constants/departmentsData";
+import DepartmentDetailModal from "@/components/explore/DepartmentDetailModal";
 
 import { useSubmissions } from "@/components/SubmissionsProvider";
-
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Sparkles, BookOpen } from "lucide-react";
 
 const departments = reviews;
 
 const DepartmentsListPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedDepartments, setSelectedDepartments] = useState([]);
+  const [activeModalDept, setActiveModalDept] = useState(null);
   const { submittedDepartments } = useSubmissions();
 
   const remainingSlots = useMemo(() => 2 - submittedDepartments.length, [submittedDepartments]);
   const selectedCount = selectedDepartments.length;
+
+  // Handle ?select=<id> query parameter from /explore
+  useEffect(() => {
+    const selectId = searchParams.get("select");
+    if (!selectId) return;
+
+    const targetDept = departments.find(
+      (d) => d.id === selectId || d.name === selectId
+    );
+
+    if (!targetDept) return;
+
+    const deptName = targetDept.name;
+    const displayName = getDepartmentDisplayName(deptName || targetDept.id);
+
+    if (submittedDepartments.includes(deptName)) {
+      toast.error(`You have already submitted an application for ${displayName}.`);
+      router.replace("/departments", { scroll: false });
+      return;
+    }
+
+    if (submittedDepartments.length >= 2) {
+      toast.error("You have already submitted the maximum allowed (2) applications.");
+      router.replace("/departments", { scroll: false });
+      return;
+    }
+
+    setSelectedDepartments((current) => {
+      if (current.includes(deptName)) {
+        return current;
+      }
+      const availableSlots = 2 - submittedDepartments.length;
+      if (current.length >= availableSlots) {
+        toast.error(`You can select at most ${availableSlots} department(s). You can swap or unselect to change.`);
+        return current;
+      }
+      toast.success(`Selected ${displayName} as ${current.length === 0 ? "Priority 1" : "Priority 2"}`);
+      return [...current, deptName];
+    });
+
+    router.replace("/departments", { scroll: false });
+  }, [searchParams, submittedDepartments, router]);
 
   // Preserve user's explicit selection order for Priority 1 and Priority 2
   const selectedIds = useMemo(() => {
@@ -98,6 +144,14 @@ const DepartmentsListPage = () => {
       }
     }
 
+    const handleOpenModal = (e) => {
+      e.stopPropagation();
+      const exploreData = getDepartmentExploreData(department.id || department.name);
+      if (exploreData) {
+        setActiveModalDept(exploreData);
+      }
+    };
+
     return (
       <li
         key={department.id || department.name}
@@ -139,6 +193,19 @@ const DepartmentsListPage = () => {
             <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
               {getDepartmentDescription(department.body || department.description, department.name || department.id)}
             </p>
+
+            <div className="mt-3 flex justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleOpenModal}
+                className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1 font-medium"
+              >
+                <BookOpen className="h-3 w-3" />
+                Learn More
+              </Button>
+            </div>
           </div>
         </div>
       </li>
@@ -150,6 +217,17 @@ const DepartmentsListPage = () => {
       <NavBar />
 
       <main className="max-w-5xl mx-auto px-4 py-10 sm:px-6 lg:px-8 flex-1 w-full">
+        {/* Helper banner linking to /explore */}
+        <div className="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5 text-sm text-foreground">
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <span>Not sure which track fits you best? Explore detailed skills, project types, and compare tracks before deciding.</span>
+          </div>
+          <Button asChild variant="outline" size="sm" className="text-xs shrink-0 font-medium bg-background">
+            <Link href="/explore">Explore Departments →</Link>
+          </Button>
+        </div>
+
         <header>
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary mb-3">
             Step 01 · Select Preferences
@@ -221,9 +299,32 @@ const DepartmentsListPage = () => {
         </section>
       </main>
 
+      {/* Department Detail Modal */}
+      <DepartmentDetailModal
+        department={activeModalDept}
+        isOpen={Boolean(activeModalDept)}
+        onClose={() => setActiveModalDept(null)}
+        onOpenCompare={() => {
+          setActiveModalDept(null);
+          router.push("/explore");
+        }}
+      />
+
       <Footer />
     </div>
   );
 };
 
-export default DepartmentsListPage;
+export default function DepartmentsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      }
+    >
+      <DepartmentsListPage />
+    </Suspense>
+  );
+}

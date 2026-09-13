@@ -84,7 +84,7 @@ const Departments = () => {
         >
             <Marquee pauseOnHover>
                 {primaryRowList.map((review) => {
-                    const href = review.id === "development" ? "/development" : `/join/${review.id}`;
+                    const href = review.id === "development" ? "/development" : `/explore?dept=${review.id}`;
                     return (
                         <Link key={`primary-${review.id}`} href={href}>
                             <ReviewCard {...review} />
@@ -94,7 +94,7 @@ const Departments = () => {
             </Marquee>
             <Marquee reverse pauseOnHover className="cursor-pointer">
                 {secondaryRowList.map((review) => {
-                    const href = review.id === "development" ? "/development" : `/join/${review.id}`;
+                    const href = review.id === "development" ? "/development" : `/explore?dept=${review.id}`;
                     return (
                         <Link key={`secondary-${review.id}`} href={href}>
                             <ReviewCard {...review} />

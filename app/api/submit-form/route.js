@@ -281,6 +281,8 @@ export async function POST(req) {
           priority: assignedPriority,
           Questions: sanitizedQuestions,
           Email: userEmail,
+          shortlisted: false,
+          status: "pending",
           createdAt: new Date(),
         });
       });

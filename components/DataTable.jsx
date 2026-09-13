@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -16,8 +16,14 @@ import { GrPowerReset } from "react-icons/gr";
 import { Button } from "./ui/button";
 import { CheckBoxComp } from "./CheckBoxComp";
 import { toast } from "sonner";
-import { months, resolveQuestionLabel, CSV_Header } from "@/constants";
+import { resolveQuestionLabel, CSV_Header } from "@/constants";
 import { getDepartmentDisplayName } from "@/lib/departments";
+import {
+  normalizeStatus,
+  getStatusLabel,
+  STATUS_CONFIG,
+  RECRUITMENT_STATUS,
+} from "@/lib/status";
 import { IoCloudDownloadOutline } from "react-icons/io5";
 import { Search } from "lucide-react";
 import {
@@ -82,8 +88,17 @@ const DataTable = ({
     if (propFilteredData) return propFilteredData;
     return data.filter((item) => {
       if (dept && item.Department !== dept) return false;
-      if (shortlist === "true" && !item.shortlisted) return false;
-      if (shortlist === "false" && item.shortlisted) return false;
+      if (shortlist) {
+        const itemStatus = normalizeStatus(item);
+        if (shortlist === "true" && itemStatus !== RECRUITMENT_STATUS.SHORTLISTED) return false;
+        if (shortlist === "false" && itemStatus === RECRUITMENT_STATUS.SHORTLISTED) return false;
+        if (
+          [RECRUITMENT_STATUS.PENDING, RECRUITMENT_STATUS.SHORTLISTED, RECRUITMENT_STATUS.WAITLISTED, RECRUITMENT_STATUS.REJECTED].includes(shortlist) &&
+          itemStatus !== shortlist
+        ) {
+          return false;
+        }
+      }
       if (priority === "1" && item.priority !== 1 && item.priority !== "1") return false;
       if (priority === "2" && item.priority !== 2 && item.priority !== "2") return false;
       if (
@@ -111,21 +126,27 @@ const DataTable = ({
     });
   }, [propFilteredData, data, dept, shortlist, priority, search]);
 
-  const handleShortlist = useCallback(
-    async (id, isShortlisted) => {
+  const handleStatusUpdate = useCallback(
+    async (id, nextStatus) => {
       try {
-        const nextShortlisted = !Boolean(isShortlisted);
         const res = await fetch(`/api/shortlist/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ shortlisted: nextShortlisted }),
+          body: JSON.stringify({ status: nextStatus }),
         });
 
+        const result = await res.json().catch(() => ({}));
+
         if (res.ok) {
+          const isShortlisted = nextStatus === RECRUITMENT_STATUS.SHORTLISTED;
           const updater = (prev) =>
             prev.map((applicant) => {
               if (applicant._id === id || applicant.id === id) {
-                return { ...applicant, shortlisted: nextShortlisted };
+                return {
+                  ...applicant,
+                  status: nextStatus,
+                  shortlisted: isShortlisted,
+                };
               }
               return applicant;
             });
@@ -133,18 +154,12 @@ const DataTable = ({
           if (typeof onDataChange === "function") {
             onDataChange(updater);
           }
-          toast.success(
-            nextShortlisted
-              ? "Student shortlisted successfully!"
-              : "Student unshortlisted successfully!"
-          );
+          toast.success(`Applicant status updated to ${getStatusLabel(nextStatus)}`);
         } else {
-          const errData = await res.json().catch(() => ({}));
-          const errMsg = errData.message || "Failed to update applicant status.";
-          toast.error(errMsg);
+          toast.error(result.message || "Failed to update applicant status.");
         }
       } catch (error) {
-        console.error("Error occurred while updating the status:", error.message);
+        console.error("Error updating applicant status:", error.message);
         toast.error("Failed to update status");
       }
     },
@@ -155,7 +170,8 @@ const DataTable = ({
   const studentShortlistMap = useMemo(() => {
     const map = new Map();
     data.forEach((item) => {
-      if (item.shortlisted && item.Email) {
+      const isShortlisted = normalizeStatus(item) === RECRUITMENT_STATUS.SHORTLISTED;
+      if (isShortlisted && item.Email) {
         map.set(item.Email, {
           id: item._id || item.id,
           department: item.Department,
@@ -223,76 +239,96 @@ const DataTable = ({
         accessor: "Phone",
       },
       {
-        Header: "Shortlist Status",
-        accessor: "shortlisted",
+        Header: "Recruitment Status",
+        accessor: (row) => normalizeStatus(row),
         Cell: ({ row }) => {
           const applicant = row.original;
           const id = applicant._id || applicant.id;
-          const isShortlisted = Boolean(applicant.shortlisted);
+          const currentStatus = normalizeStatus(applicant);
+          const isShortlisted = currentStatus === RECRUITMENT_STATUS.SHORTLISTED;
           const studentEmail = applicant.Email;
           const selectedOther = studentEmail ? studentShortlistMap.get(studentEmail) : null;
           const isBlocked = !isShortlisted && selectedOther && selectedOther.id !== id;
 
-          if (isShortlisted) {
-            return (
-              <div className="flex flex-col items-start gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleShortlist(id, true)}
-                  className="px-3 py-1.5 rounded text-xs font-medium bg-red-600 hover:bg-red-700 text-white transition-colors w-[125px]"
-                >
-                  Unshortlist
-                </button>
-                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                  Shortlisted
-                </span>
-              </div>
-            );
-          }
+          const otherDeptName = selectedOther
+            ? getDepartmentDisplayName(selectedOther.department) || selectedOther.department || "another department"
+            : "";
 
-          if (isBlocked) {
-            const otherDeptName =
-              getDepartmentDisplayName(selectedOther.department) ||
-              selectedOther.department ||
-              "another department";
-            const otherPriority = selectedOther.priority
-              ? `P${selectedOther.priority}`
-              : null;
-            return (
-              <div className="flex flex-col items-start gap-1">
-                <button
-                  type="button"
-                  disabled
-                  title={`Unavailable — student already shortlisted for ${otherDeptName}${
-                    otherPriority ? ` (${otherPriority})` : ""
-                  }`}
-                  className="px-3 py-1.5 rounded text-xs font-medium bg-muted text-muted-foreground border border-border/60 cursor-not-allowed opacity-75 w-[125px]"
-                >
-                  Already Shortlisted
-                </button>
-                <span
-                  className="text-[10px] text-muted-foreground leading-tight max-w-[130px] truncate"
-                  title={`Unavailable — student already shortlisted for ${otherDeptName}`}
-                >
-                  Already shortlisted for {otherDeptName}
-                </span>
-              </div>
-            );
-          }
+          const statusCfg = STATUS_CONFIG[currentStatus] || STATUS_CONFIG[RECRUITMENT_STATUS.PENDING];
 
           return (
-            <button
-              type="button"
-              onClick={() => handleShortlist(id, false)}
-              className="px-3 py-1.5 rounded text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors w-[125px]"
-            >
-              Shortlist
-            </button>
+            <div className="flex flex-col items-start gap-1.5 py-1 min-w-[145px]">
+              {/* Status Badge */}
+              <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${statusCfg.adminBadge.className}`}>
+                {statusCfg.label}
+              </span>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1 flex-wrap">
+                {isShortlisted ? (
+                  <button
+                    type="button"
+                    onClick={() => handleStatusUpdate(id, RECRUITMENT_STATUS.PENDING)}
+                    className="px-2 py-1 rounded text-[11px] font-medium bg-red-600 hover:bg-red-700 text-white transition-colors"
+                  >
+                    Unshortlist
+                  </button>
+                ) : isBlocked ? (
+                  <button
+                    type="button"
+                    disabled
+                    title={`Unavailable — student already shortlisted for ${otherDeptName}`}
+                    className="px-2 py-1 rounded text-[11px] font-medium bg-muted text-muted-foreground border border-border/60 cursor-not-allowed opacity-75"
+                  >
+                    Shortlist Blocked
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleStatusUpdate(id, RECRUITMENT_STATUS.SHORTLISTED)}
+                    className="px-2 py-1 rounded text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                  >
+                    Shortlist
+                  </button>
+                )}
+
+                {currentStatus !== RECRUITMENT_STATUS.WAITLISTED && (
+                  <button
+                    type="button"
+                    onClick={() => handleStatusUpdate(id, RECRUITMENT_STATUS.WAITLISTED)}
+                    className="px-1.5 py-1 rounded text-[10px] font-medium border border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors"
+                  >
+                    Waitlist
+                  </button>
+                )}
+
+                {currentStatus !== RECRUITMENT_STATUS.REJECTED && (
+                  <button
+                    type="button"
+                    onClick={() => handleStatusUpdate(id, RECRUITMENT_STATUS.REJECTED)}
+                    className="px-1.5 py-1 rounded text-[10px] font-medium border border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
+                  >
+                    Reject
+                  </button>
+                )}
+
+                {currentStatus !== RECRUITMENT_STATUS.PENDING && !isShortlisted && (
+                  <button
+                    type="button"
+                    onClick={() => handleStatusUpdate(id, RECRUITMENT_STATUS.PENDING)}
+                    className="px-1.5 py-1 rounded text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    title="Reset to Pending"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
           );
         },
       },
     ],
-    [handleShortlist, studentShortlistMap]
+    [handleStatusUpdate, studentShortlistMap]
   );
 
   const stateReducer = useCallback((newState, action, prevState) => {
@@ -419,11 +455,15 @@ const DataTable = ({
             : item.priority === 2 || item.priority === "2"
             ? "P2"
             : "Not set";
+        const statusDisplay = getStatusLabel(item);
+
         return {
           ...item,
           Department: deptDisplay,
           Priority: priorityDisplay,
           Pref: item.priority ? `P${item.priority}` : priorityDisplay,
+          Status: statusDisplay,
+          shortlisted: Boolean(item.shortlisted) ? "Yes" : "No",
           Gender: item.Gender || "N/A",
           Questions: formatQuestionsForCsv(item),
         };
@@ -464,18 +504,24 @@ const DataTable = ({
         {/* Priority Filter */}
         <FilterPriority value={priority} filterFunc={onPriorityChange} />
 
-        {/* Shortlist Filter */}
+        {/* Recruitment Status Filter */}
         <FilterShortlisted value={shortlist} filterFunc={onShortlistChange} />
 
         {/* Action Controls */}
         <DialogComp
           selectedApplicants={showRowData}
-          onApplicantUpdate={(id, nextShortlisted) => {
+          allApplicants={data}
+          onApplicantUpdate={(id, nextStatus) => {
+            const isShortlisted = nextStatus === RECRUITMENT_STATUS.SHORTLISTED;
             if (typeof onDataChange === "function") {
               onDataChange((prev) =>
                 prev.map((applicant) => {
                   if (applicant._id === id || applicant.id === id) {
-                    return { ...applicant, shortlisted: nextShortlisted };
+                    return {
+                      ...applicant,
+                      status: nextStatus,
+                      shortlisted: isShortlisted,
+                    };
                   }
                   return applicant;
                 })

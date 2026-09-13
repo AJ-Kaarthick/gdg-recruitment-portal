@@ -790,6 +790,10 @@ export const CSV_Header = [
     key: "Pref",
   },
   {
+    label: "Status",
+    key: "Status",
+  },
+  {
     label: "Shortlisted",
     key: "shortlisted",
   },

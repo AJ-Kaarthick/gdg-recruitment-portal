@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { getDepartmentDisplayName } from "@/lib/departments";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, Clock, AlertCircle, ArrowRight, RefreshCw, FileText } from "lucide-react";
+import { normalizeStatus, RECRUITMENT_STATUS } from "@/lib/status";
 import { toast } from "sonner";
 
 export default function StudentApplicationsPage() {
@@ -169,7 +170,10 @@ export default function StudentApplicationsPage() {
                 {applications.map((app, index) => {
                   const deptDisplay = getDepartmentDisplayName(app.Department) || app.Department || "Unassigned";
                   const formattedSubmissionDate = formatDate(app.createdAt);
-                  const isShortlisted = Boolean(app.shortlisted);
+                  const status = normalizeStatus(app);
+                  const isShortlisted = status === RECRUITMENT_STATUS.SHORTLISTED;
+                  const isWaitlisted = status === RECRUITMENT_STATUS.WAITLISTED;
+                  const isRejected = status === RECRUITMENT_STATUS.REJECTED;
 
                   return (
                     <div
@@ -214,10 +218,21 @@ export default function StudentApplicationsPage() {
                             <span>Application Submitted</span>
                           </div>
 
-                          {/* Shortlist Status */}
+                          {/* Recruitment Status */}
                           {isShortlisted ? (
                             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-xs">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
                               <span>Shortlisted</span>
+                            </div>
+                          ) : isWaitlisted ? (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>Waitlisted</span>
+                            </div>
+                          ) : isRejected ? (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              <span>Not Selected</span>
                             </div>
                           ) : (
                             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40">
@@ -233,6 +248,14 @@ export default function StudentApplicationsPage() {
                         {isShortlisted ? (
                           <p className="text-emerald-700 dark:text-emerald-300">
                             🎉 Congratulations! You have been shortlisted for this department. Further communication will be shared soon.
+                          </p>
+                        ) : isWaitlisted ? (
+                          <p className="text-amber-800 dark:text-amber-300">
+                            Your application is currently on the waitlist and may be reconsidered as places become available.
+                          </p>
+                        ) : isRejected ? (
+                          <p className="text-rose-800 dark:text-rose-300">
+                            This application was not selected for the current recruitment stage. Thank you for your interest and effort in applying.
                           </p>
                         ) : (
                           <p>

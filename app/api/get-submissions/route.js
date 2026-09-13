@@ -29,6 +29,7 @@ export async function GET(req) {
         Department: docData.Department,
         priority: docData.priority !== undefined ? docData.priority : null,
         shortlisted: Boolean(docData.shortlisted),
+        status: docData.status || (docData.shortlisted ? "shortlisted" : "pending"),
         createdAt: serializeFirestoreData(docData.createdAt),
       };
     });

@@ -3,6 +3,7 @@ import { connect, serializeFirestoreData } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { getDepartmentDisplayName } from '@/lib/departments';
+import { VALID_STATUSES, RECRUITMENT_STATUS } from '@/lib/status';
 
 export async function PATCH(req, { params }) {
     try {
@@ -25,14 +26,36 @@ export async function PATCH(req, { params }) {
         }
 
         const db = await connect();
-
         const { id } = params;
         const body = await req.json().catch(() => ({}));
-        const { shortlisted } = body;
+        const { status, shortlisted } = body;
 
-        if (typeof shortlisted !== "boolean") {
+        let targetStatus = null;
+        let nextShortlisted = false;
+
+        if (typeof status === "string") {
+            const normalized = status.toLowerCase().trim();
+            if (!VALID_STATUSES.includes(normalized)) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message: `Invalid status payload: must be one of ${VALID_STATUSES.join(', ')}`,
+                    },
+                    { status: 400 }
+                );
+            }
+            targetStatus = normalized;
+            nextShortlisted = (targetStatus === RECRUITMENT_STATUS.SHORTLISTED);
+        } else if (typeof shortlisted === "boolean") {
+            // Backward compatibility for legacy clients passing boolean { shortlisted }
+            nextShortlisted = shortlisted;
+            targetStatus = shortlisted ? RECRUITMENT_STATUS.SHORTLISTED : RECRUITMENT_STATUS.PENDING;
+        } else {
             return NextResponse.json(
-                { success: false, message: "Invalid payload: shortlisted must be a boolean" },
+                {
+                    success: false,
+                    message: "Invalid payload: must provide 'status' (pending, shortlisted, waitlisted, rejected) or 'shortlisted' (boolean)",
+                },
                 { status: 400 }
             );
         }
@@ -53,7 +76,7 @@ export async function PATCH(req, { params }) {
                 const applicantData = snapshot.data();
                 const studentEmail = applicantData?.Email;
 
-                if (shortlisted) {
+                if (nextShortlisted) {
                     // Check if this student already has another department application shortlisted
                     if (studentEmail) {
                         const existingShortlistedQuery = db
@@ -73,14 +96,18 @@ export async function PATCH(req, { params }) {
                     }
                 }
 
-                t.update(docRef, { shortlisted });
+                t.update(docRef, {
+                    status: targetStatus,
+                    shortlisted: nextShortlisted,
+                });
 
                 updatedData = {
                     id: snapshot.id,
                     _id: snapshot.id,
                     ...serializeFirestoreData({
                         ...applicantData,
-                        shortlisted,
+                        status: targetStatus,
+                        shortlisted: nextShortlisted,
                     }),
                 };
             });
@@ -113,4 +140,3 @@ export async function PATCH(req, { params }) {
         );
     }
 }
-

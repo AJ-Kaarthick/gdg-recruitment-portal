@@ -9,7 +9,7 @@ import { Button } from "./ui/button";
 
 import { useSubmissions } from "./SubmissionsProvider";
 import { getDepartmentDisplayName } from "@/lib/departments";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ArrowRight } from "lucide-react";
 
 export default function Hero() {
   const { theme, resolvedTheme } = useTheme();
@@ -69,7 +69,12 @@ export default function Hero() {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
+        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+          <Button asChild size="default" className="rounded-full font-semibold px-5 shadow-sm gap-2">
+            <Link href="/explore">
+              Explore Departments <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
           <AnimatedButton />
         </div>
       </div>
